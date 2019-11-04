@@ -113,6 +113,9 @@ void loop() {
   Wire.endTransmission(false);      //keep the transmission and next
   Wire.requestFrom(0x68, 6, true);  //We ask for next 6 registers starting withj the 3B
   /*We have asked for the 0x3B register. The IMU will send a brust of register.
+    The amount of register to read is specify in the requestFrom function.
+    In this case we request 6 registers. Each value of acceleration is made out of
+    two 8bits registers, low values and high values. For that we request the 6 of them
     and just make then sum of each pair. For that we shift to the left the high values
     register (<<) and make an or (|) operation to add the low values.
     If we read the datasheet, for a range of+-8g, we have to divide the raw values by 4096*/
