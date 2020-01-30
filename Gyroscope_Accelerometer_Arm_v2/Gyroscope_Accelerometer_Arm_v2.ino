@@ -24,20 +24,18 @@ bool calibration_button_pressed =false;
 int calibration_button_state = 0;
 bool startup_completed = false;
 
-int measure120_button_pin=11;
+int measure120_button_pin=13;
 bool measure120_button_pressed =false;
 int measure120_button_state=0;
 
 
 //Gyro Variables
 float elapsedTime, time, timePrev, elapsedTime250ms;       //Variables for time control
-float elapsedTime500ms;
 float Gyr_rawX, Gyr_rawY, Gyr_rawZ;     //Here we store the raw data read
 float Gyro_angle_x, Gyro_angle_y;         //Here we store the angle value obtained with Gyro data
 float Gyro_raw_error_x, Gyro_raw_error_y;
 
 float timePrev250ms = 0;
-float timePrev500ms = 0;
 float Total_height_to_average_250ms;
 int Number_of_readings_250ms;
 float Average_height;
@@ -78,7 +76,6 @@ void setup() {
   time = millis();                        //Start counting time in milliseconds
 
   pinMode(calibration_button_pin,INPUT_PULLUP);
-  pinMode(measure120_button_pin,INPUT_PULLUP);
 
   while (!startup_completed) {
     testForCalibrationButtonPress();
@@ -93,11 +90,7 @@ void loop() {
   elapsedTime250ms = (time - timePrev250ms);        // elapsed time in ms //divide by 1000 in order to obtain seconds
   elapsedTime = (time - timePrev) / 1000;
 
-  elapsedTime500ms = (time - timePrev500ms);
-  
-
   testForCalibrationButtonPress();
-  testForMeasure120ButtonPress();
 
   //////////////////////////////////////Gyro read/////////////////////////////////////
 
@@ -160,7 +153,7 @@ void loop() {
   Serial.println(set_height+delta_height);
   */
 
-  /*
+  
   if (elapsedTime250ms >= 250) {
     Total_height_to_average_250ms = Total_height_to_average_250ms + Total_angle_y;
     Number_of_readings_250ms++;
@@ -171,7 +164,6 @@ void loop() {
     Number_of_readings_250ms = 0;
     timePrev250ms = time;
   }
-  */
 
 
   //float set_height = 1000.00;
@@ -202,41 +194,12 @@ void testForCalibrationButtonPress() {
   //Serial.println(calibration_button_state);
   if (calibration_button_state == HIGH) {
     doCalibrationSequence();
-    Serial.println("calibration button pressed");
-  }
-}
-
-void testForMeasure120ButtonPress() {
-  measure120_button_state = !digitalRead(measure120_button_pin);
-  Serial.println(measure120_button_state);
-  if (measure120_button_pin == HIGH) {
-    measure120();
-    Serial.println("measure120 button pressed");
   }
 }
 
 float measureUltrasonicDistance(){
   //return sonar.ping_cm();
   Serial.println(sonar.ping_cm());
-}
-
-void measure120(){
-  int numberOfReadings = 0;
-  int armLength = 100;
-  float delta_height = calculateDeltaHeight(Total_angle_y, armLength);
-  float obtained_data[120];
-  if (elapsedTime500ms > 500){
-    if (numberOfReadings < 120){
-      obtained_data[numberOfReadings] = delta_height;
-      numberOfReadings++;
-      timePrev500ms = time;
-    }else{
-      Serial.println("Verzamelde data:\n");
-      for(int i=0; i<120;i++){
-        Serial.println(obtained_data[i]);
-      }
-    }
-  }
 }
 
 void doCalibrationSequence() {
