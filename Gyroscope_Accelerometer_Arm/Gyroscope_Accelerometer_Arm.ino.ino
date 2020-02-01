@@ -89,100 +89,17 @@ void setup() {
 
 void loop() {
   timePrev = time;
-  time = millis();                        // actual time read
-  elapsedTime250ms = (time - timePrev250ms);        // elapsed time in ms //divide by 1000 in order to obtain seconds
-  elapsedTime = (time - timePrev) / 1000;
-
+  time = millis();
+  elapsedTime = (time - timePrev) / 1000;       // Elapsed time in ms devided by 1000 in order to obtain seconds
+  elapsedTime250ms = (time - timePrev250ms);
   elapsedTime500ms = (time - timePrev500ms);
   
 
   testForCalibrationButtonPress();
   testForMeasure120ButtonPress();
+  getAngle();
+  sendDataToSerial();
 
-  //////////////////////////////////////Gyro read/////////////////////////////////////
-
-  Wire.beginTransmission(0x68);            //begin, Send the slave adress (in this case 68)
-  Wire.write(0x43);                        //First adress of the Gyro data
-  Wire.endTransmission(false);
-  Wire.requestFrom(0x68, 4, true);         //We ask for just 4 registers
-
-  Gyr_rawX = Wire.read() << 8 | Wire.read(); //Once again we shif and sum
-  Gyr_rawY = Wire.read() << 8 | Wire.read();
-  /*Now in order to obtain the gyro data in degrees/seconds we have to divide first
-    the raw value by 32.8 because that's the value that the datasheet gives us for a 1000dps range*/
-  /*---X---*/
-  Gyr_rawX = (Gyr_rawX / 32.8) - Gyro_raw_error_x;
-  /*---Y---*/
-  Gyr_rawY = (Gyr_rawY / 32.8) - Gyro_raw_error_y;
-
-  /*Now we integrate the raw value in degrees per seconds in order to obtain the angle
-    If you multiply degrees/seconds by seconds you obtain degrees */
-  /*---X---*/
-  Gyro_angle_x = Gyr_rawX * elapsedTime;
-  /*---X---*/
-  Gyro_angle_y = Gyr_rawY * elapsedTime;
-
-  //////////////////////////////////////Acc read/////////////////////////////////////
-
-  Wire.beginTransmission(0x68);     //begin, Send the slave adress (in this case 68)
-  Wire.write(0x3B);                 //Ask for the 0x3B register- correspond to AcX
-  Wire.endTransmission(false);      //keep the transmission and next
-  Wire.requestFrom(0x68, 6, true);  //We ask for next 6 registers starting withj the 3B
-  /*We have asked for the 0x3B register. The IMU will send a brust of register.
-    The amount of register to read is specify in the requestFrom function.
-    In this case we request 6 registers. Each value of acceleration is made out of
-    two 8bits registers, low values and high values. For that we request the 6 of them
-    and just make then sum of each pair. For that we shift to the left the high values
-    register (<<) and make an or (|) operation to add the low values.
-    If we read the datasheet, for a range of+-8g, we have to divide the raw values by 4096*/
-  Acc_rawX = (Wire.read() << 8 | Wire.read()) / 4096.0 ; //each value needs two registres
-  Acc_rawY = (Wire.read() << 8 | Wire.read()) / 4096.0 ;
-  Acc_rawZ = (Wire.read() << 8 | Wire.read()) / 4096.0 ;
-  /*Now in order to obtain the Acc angles we use euler formula with acceleration values
-    after that we substract the error value found before*/
-  /*---X---*/
-  Acc_angle_x = radToDeg(atan((Acc_rawY) / sqrt(pow((Acc_rawX), 2) + pow((Acc_rawZ), 2)))) - Acc_angle_error_x;
-  /*---Y---*/
-  Acc_angle_y = radToDeg(atan(-1 * (Acc_rawX) / sqrt(pow((Acc_rawY), 2) + pow((Acc_rawZ), 2)))) - Acc_angle_error_y;
-
-
-  //////////////////////////////////////Total angle and filter/////////////////////////////////////
-  /*---X axis angle---*/
-  Total_angle_x = 0.98 * (Total_angle_x + Gyro_angle_x) + 0.02 * Acc_angle_x;
-  /*---Y axis angle---*/
-  Total_angle_y = 0.98 * (Total_angle_y + Gyro_angle_y) + 0.02 * Acc_angle_y;
-
-  /*
-  //Serial.println(Total_angle_y);
-  float delta_height = calculateDeltaHeight(Total_angle_y,100)-16;
-  float set_height = 110;
-  //Serial.println(delta_height);
-  Serial.println(set_height+delta_height);
-  */
-
-  /*
-  if (elapsedTime250ms >= 250) {
-    Total_height_to_average_250ms = Total_height_to_average_250ms + Total_angle_y;
-    Number_of_readings_250ms++;
-    Serial.print(Total_height_to_average_250ms / Number_of_readings_250ms);
-    Serial.print("|");
-    measureUltrasonicDistance();
-    Total_height_to_average_250ms = 0;
-    Number_of_readings_250ms = 0;
-    timePrev250ms = time;
-  }
-  */
-
-
-  //float set_height = 1000.00;
-
-  //float delta_height = calculateDeltaHeight(Total_angle_y,300);
-  //Serial.print("Height difference: ");
-  //Serial.println(delta_height);
-  //Serial.print("Waterheight: ");
-  //Serial.println(set_height+delta_height);
-  //Serial.println(" ");
-  //delay(250);
 }
 
 float calculateDeltaHeight(float angle, int armLength) {
@@ -202,7 +119,7 @@ void testForCalibrationButtonPress() {
   //Serial.println(calibration_button_state);
   if (calibration_button_state == HIGH) {
     doCalibrationSequence();
-    Serial.println("calibration button pressed");
+    //Serial.println("calibration button pressed");
   }
 }
 
@@ -211,13 +128,12 @@ void testForMeasure120ButtonPress() {
   Serial.println(measure120_button_state);
   if (measure120_button_pin == HIGH) {
     measure120();
-    Serial.println("measure120 button pressed");
+    //Serial.println("measure120 button pressed");
   }
 }
 
 float measureUltrasonicDistance(){
-  //return sonar.ping_cm();
-  Serial.println(sonar.ping_cm());
+  return sonar.ping_cm();
 }
 
 void measure120(){
@@ -237,6 +153,12 @@ void measure120(){
       }
     }
   }
+}
+
+void sendDataToSerial(){
+  Serial.print(Total_angle_y);
+  Serial.print("|");
+  Serial.println(measureUltrasonicDistance());
 }
 
 void doCalibrationSequence() {
@@ -285,4 +207,64 @@ void doCalibrationSequence() {
   if(!startup_completed){
     startup_completed = true;
   }
+}
+
+void getAngle(){
+  //////////////////////////////////////Gyro read/////////////////////////////////////
+
+  Wire.beginTransmission(0x68);            //begin, Send the slave adress (in this case 68)
+  Wire.write(0x43);                        //First adress of the Gyro data
+  Wire.endTransmission(false);
+  Wire.requestFrom(0x68, 4, true);         //We ask for just 4 registers
+
+  Gyr_rawX = Wire.read() << 8 | Wire.read(); //Once again we shif and sum
+  Gyr_rawY = Wire.read() << 8 | Wire.read();
+  /*To get the gyroscope data in degrees/second the raw value by 32.8 this value is specified by
+    the datasheet of the accelerometer for a range of 1000degrees/second. Subtract the error
+    values set during calibration to get the correct angular momentum*/
+  /*---X---*/
+  Gyr_rawX = (Gyr_rawX / 32.8) - Gyro_raw_error_x;
+  /*---Y---*/
+  Gyr_rawY = (Gyr_rawY / 32.8) - Gyro_raw_error_y;
+
+  /*Multiply the elapsed time with the degrees/second that was just retrieved to get the angle*/
+  /*---X---*/
+  Gyro_angle_x = Gyr_rawX * elapsedTime;
+  /*---Y---*/
+  Gyro_angle_y = Gyr_rawY * elapsedTime;
+
+  //////////////////////////////////////Acc read/////////////////////////////////////
+
+  Wire.beginTransmission(0x68);     //begin, Send the slave adress (in this case 68)
+  Wire.write(0x3B);                 //Ask for the 0x3B register- correspond to AcX
+  Wire.endTransmission(false);      //keep the transmission and next
+  Wire.requestFrom(0x68, 6, true);  //We ask for next 6 registers starting withj the 3B
+  /*We have asked for the 0x3B register. The IMU will send a brust of register.
+    The amount of register to read is specify in the requestFrom function.
+    In this case we request 6 registers. Each value of acceleration is made out of
+    two 8bits registers, low values and high values. For that we request the 6 of them
+    and just make then sum of each pair. For that we shift to the left the high values
+    register (<<) and make an or (|) operation to add the low values.
+    If we read the datasheet, for a range of+-8g, we have to divide the raw values by 4096*/
+  Acc_rawX = (Wire.read() << 8 | Wire.read()) / 4096.0 ; //each value needs two registres
+  Acc_rawY = (Wire.read() << 8 | Wire.read()) / 4096.0 ;
+  Acc_rawZ = (Wire.read() << 8 | Wire.read()) / 4096.0 ;
+
+  /*To get the accelerometer angles Euler's formula is used with the acceleration values. After
+    that the error values set during the calibration*/
+  /*---X---*/
+  Acc_angle_x = radToDeg(atan((Acc_rawY) / sqrt(pow((Acc_rawX), 2) + pow((Acc_rawZ), 2)))) - Acc_angle_error_x;
+  /*---Y---*/
+  Acc_angle_y = radToDeg(atan(-1 * (Acc_rawX) / sqrt(pow((Acc_rawY), 2) + pow((Acc_rawZ), 2)))) - Acc_angle_error_y;
+
+
+  //////////////////////////////////////Total angle and filter/////////////////////////////////////
+
+  /*To get an accurate reading of the angles, both the accelerometer and gyroscope values are used.
+    This is done because the gyroscope will drift over time, and the accelerometer alone doesn't
+    provide very accurate readings*/
+  /*---X axis angle---*/
+  Total_angle_x = 0.98 * (Total_angle_x + Gyro_angle_x) + 0.02 * Acc_angle_x;
+  /*---Y axis angle---*/
+  Total_angle_y = 0.98 * (Total_angle_y + Gyro_angle_y) + 0.02 * Acc_angle_y;
 }
